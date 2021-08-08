@@ -89,6 +89,34 @@
               "image": "mcr.microsoft.com/azureiotedge-simulated-temperature-sensor:1.0",
               "createOptions": {}
             }
+          },
+          "AzureBlobStorageonIoTEdge": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "running",
+            "restartPolicy": "always",
+            "settings": {
+              "image": "mcr.microsoft.com/azure-blob-storage:latest",
+              "createOptions": {
+                "HostConfig": {
+                  "PortBindings": {
+                    "11002/tcp": [
+                      {
+                        "HostPort": "11002"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "env": {
+              "LOCAL_STORAGE_ACCOUNT_NAME": {
+                "value": "<Your local account name>"
+              },
+              "LOCAL_STORAGE_ACCOUNT_KEY": {
+                "value": "<Your local account key>"
+              }
+            }
           }
         }
       }
@@ -98,7 +126,8 @@
         "schemaVersion": "1.0",
         "routes": {
           "ImageClassifierToIoTHub": "FROM /messages/modules/ImageClassifier/outputs/* INTO $upstream",
-          "sensorToImageClassifier": "FROM /messages/modules/SimulatedTemperatureSensor/outputs/temperatureOutput INTO BrokeredEndpoint(\"/modules/ImageClassifier/inputs/input1\")"
+          "sensorToImageClassifier": "FROM /messages/modules/SimulatedTemperatureSensor/outputs/temperatureOutput INTO BrokeredEndpoint(\"/modules/ImageClassifier/inputs/input1\")",
+          "AzureBlobStorageonIoTEdgeToIoTHub": "FROM /messages/modules/AzureBlobStorageonIoTEdge/outputs/* INTO $upstream"
         },
         "storeAndForwardConfiguration": {
           "timeToLiveSecs": 7200

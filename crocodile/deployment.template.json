@@ -64,7 +64,61 @@
             "restartPolicy": "always",
             "settings": {
               "image": "${MODULES.ImageClassifier.arm32v7}",
-              "createOptions": {}
+              "createOptions": {
+                "Env": [
+                  "LOCAL_STORAGE_ACCOUNT_NAME=$LOCAL_STORAGE_ACCOUNT_NAME",
+                  "LOCAL_STORAGE_ACCOUNT_KEY=$LOCAL_STORAGE_ACCOUNT_KEY",
+                  "IMAGE_CONTAINER_NAME=$IMAGE_CONTAINER_NAME"
+                ],
+                "NetworkingConfig": {
+                  "EndpointsConfig": {
+                    "host": {}
+                  }
+                },
+                "HostConfig": {
+                  "NetworkMode": "host",
+                  "Privileged": true,
+                  "Binds": [
+                    "/var/azure-iot-edge/images:/app/images",
+                    "/dev/bus/usb:/dev/bus/usb"
+                  ],
+                  "Devices": [
+                    {
+                      "PathOnHost": "/dev/video0",
+                      "PathInContainer": "/dev/video0",
+                      "CgroupPermissions": "rwm"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "local-blob-storage": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "running",
+            "restartPolicy": "always",
+            "settings": {
+              "image": "mcr.microsoft.com/azure-blob-storage:latest",
+              "createOptions": {
+                "HostConfig": {
+                  "PortBindings": {
+                    "11002/tcp": [
+                      {
+                        "HostPort": "11002"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "env": {
+              "LOCAL_STORAGE_ACCOUNT_NAME": {
+                "value": "$LOCAL_STORAGE_ACCOUNT_NAME"
+              },
+              "LOCAL_STORAGE_ACCOUNT_KEY": {
+                "value": "$LOCAL_STORAGE_ACCOUNT_KEY"
+              }
             }
           }
         }
@@ -74,10 +128,37 @@
       "properties.desired": {
         "schemaVersion": "1.0",
         "routes": {
-          "ImageClassifierToIoTHub": "FROM /messages/modules/image-classifier/outputs/* INTO $upstream"
+          "ImageClassifierToIoTHub": "FROM /messages/modules/image-classifier/outputs/* INTO $upstream",
+          "AzureBlobStorageonIoTEdgeToIoTHub": "FROM /messages/modules/local-blob-storage/outputs/* INTO $upstream"
         },
         "storeAndForwardConfiguration": {
           "timeToLiveSecs": 7200
+        }
+      }
+    },
+    "image-classifier": {
+      "properties.desired": {
+        "Model": "Tensorflow",
+        "ProbabilityThreshold": 0.8
+      }
+    },
+    "local-blob-storage":{
+      "properties.desired": {
+        "deviceAutoDeleteProperties": {
+          "deleteOn": true,
+          "deleteAfterMinutes": 5,
+          "retainWhileUploading":true
+        },
+        "deviceToCloudUploadProperties": {
+          "uploadOn": true,
+          "uploadOrder": "OldestFirst",
+          "cloudStorageConnectionString": "$BLOB_CONNECTION_STRING",
+          "storageContainersForUpload": {
+            "images": {
+              "target": "images"
+            }
+          },
+          "deleteAfterUpload":true
         }
       }
     }
