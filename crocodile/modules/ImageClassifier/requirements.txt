@@ -1,0 +1,4 @@
+azure-iot-device~=2.7.0
+flask
+azure-storage-blob
+numpy
