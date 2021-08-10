@@ -61,7 +61,7 @@
             "version": "1.0",
             "type": "docker",
             "status": "running",
-            "restartPolicy": "always",
+            "restartPolicy": "never",
             "settings": {
               "image": "${MODULES.ImageClassifier.arm32v7}",
               "createOptions": {
@@ -87,6 +87,16 @@
                       "PathOnHost": "/dev/video0",
                       "PathInContainer": "/dev/video0",
                       "CgroupPermissions": "rwm"
+                    },
+                    {
+                      "PathOnHost": "/dev/gpiomem",
+                      "PathInContainer": "/dev/gpiomem",
+                      "CgroupPermissions": "rwm"
+                    },
+                    {
+                      "PathOnHost": "/dev/i2c-1",
+                      "PathInContainer": "/dev/i2c-1",
+                      "CgroupPermissions": "rwm"
                     }
                   ]
                 }
@@ -102,6 +112,9 @@
               "image": "mcr.microsoft.com/azure-blob-storage:latest",
               "createOptions": {
                 "HostConfig": {
+                  "Binds": [
+                    "/srv/containerdata:/blobroot"
+                  ],
                   "PortBindings": {
                     "11002/tcp": [
                       {
@@ -139,7 +152,8 @@
     "image-classifier": {
       "properties.desired": {
         "Model": "Tensorflow",
-        "ProbabilityThreshold": 0.8
+        "ProbabilityThreshold": 0.8,
+        "SavingDataToFile": true
       }
     },
     "local-blob-storage":{

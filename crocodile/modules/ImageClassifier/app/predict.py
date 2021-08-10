@@ -15,16 +15,19 @@ from azure.iot.device import IoTHubModuleClient
 from azure.storage.blob import BlobServiceClient
 
 from ThreadingVideoStream import ThreadingVideoStream
+from LCD import LCD
 
 DEVICE_ID = os.environ['IOTEDGE_DEVICEID']
-PROBABILITY_THRESHOLD = .8
 MODEL = "Tensorflow"
+PROBABILITY_THRESHOLD = .8
+SAVING_DATA_TO_FILE = True
 TWIN_CALLBACKS = 0
 
 # モジュール ツインの更新
 def twin_update_listener(client):
-    global PROBABILITY_THRESHOLD
     global MODEL
+    global PROBABILITY_THRESHOLD
+    global SAVING_DATA_TO_FILE
     global TWIN_CALLBACKS
 
     while True:
@@ -35,6 +38,9 @@ def twin_update_listener(client):
         
         if "ProbabilityThreshold" in data:
             PROBABILITY_THRESHOLD = data["ProbabilityThreshold"]
+
+        if "SavingDataToFile" in data:
+            SAVING_DATA_TO_FILE = data["SavingDataToFile"]
         
         TWIN_CALLBACKS +=1
         print("Total calls confirmed: %d\n" % TWIN_CALLBACKS)
@@ -53,8 +59,9 @@ def main():
         print("\nPython %s\n" % sys.version)
         print("Press Ctrl-C to exit.")
 
-        global PROBABILITY_THRESHOLD
         global MODEL
+        global PROBABILITY_THRESHOLD
+        global SAVING_DATA_TO_FILE
 
         module_client = IoTHubModuleClient.create_from_edge_environment()
         module_client.connect()
@@ -110,6 +117,9 @@ def main():
 
         stream = ThreadingVideoStream(0)
         stream.start()
+
+        lcd = LCD()
+        lcd.clear()
 
         message_no = 0
 
@@ -172,6 +182,12 @@ def main():
                 highest_probability_index = np.argmax(predictions)
                 score = predictions[0][highest_probability_index]
 
+                # LCD ディスプレイに結果を表示
+                line1 = "{} ({:.0%})".format(labels[highest_probability_index], float(score))
+                line2 = "time: {}ms".format(int(infer_time*1000.0))
+
+                lcd.write(line1, line2)
+
                 # 結果が閾値を超える場合のみ、メッセージの送信、画像の保存を実行
                 if score > PROBABILITY_THRESHOLD:
                     # IoT Hub に送信するメッセージの作成
@@ -195,25 +211,32 @@ def main():
                     module_client.send_message_to_output(message, "output1")
                     print("Send to IotHub: %s" % message)
 
-                    # 画像を保存
-                    filename = "/app/images/{}.jpg".format(uuid.uuid4().hex)
-                    cv2.putText(frame, "label: {}, probability: {:.2%}".format(labels[highest_probability_index], float(score)), (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), thickness=2)
-                    cv2.imwrite(filename, frame)
-                    print("Saving the image: %s" % filename)
+                    if SAVING_DATA_TO_FILE:
+                        # 画像を保存
+                        filename = "/app/images/{}.jpg".format(uuid.uuid4().hex)
+                        cv2.putText(frame, "label: {}, probability: {:.2%}".format(labels[highest_probability_index], float(score)), (40, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), thickness=2)
+                        cv2.imwrite(filename, frame)
+                        print("Saving the image: %s" % filename)
 
-                    # ローカル BLOB へ保存した画像をアップロード
-                    blob_client = blob_service_client.get_blob_client(container=IMAGE_CONTAINER_NAME, blob=filename)
-                    with open(filename, "rb") as data:
-                        blob_client.upload_blob(data)
+                        # ローカル BLOB へ保存した画像をアップロード
+                        blob_client = blob_service_client.get_blob_client(container=IMAGE_CONTAINER_NAME, blob=filename)
+                        with open(filename, "rb") as data:
+                            blob_client.upload_blob(data)
                     
                     message_no += 1
 
             except Exception as e:
                 print("Unexpected error in main: %s" % str(e))
 
-            time.sleep(60)
+            time.sleep(45)
+            lcd.clear()
+            time.sleep(15)
+    
     except KeyboardInterrupt:
         print("predict.py stopped")
+
+        stream.stop()
+        lcd.stop()
 
 
 if __name__ == "__main__":
