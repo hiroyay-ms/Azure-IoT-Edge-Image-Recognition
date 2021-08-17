@@ -235,8 +235,9 @@ def main():
     except KeyboardInterrupt:
         print("predict.py stopped")
 
-        stream.stop()
+    finally:
         lcd.stop()
+        stream.stop()
 
 
 if __name__ == "__main__":

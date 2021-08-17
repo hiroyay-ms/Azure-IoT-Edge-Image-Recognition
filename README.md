@@ -1,5 +1,20 @@
 # Azure-IoT-Edge-Image-Recognition
 
+<br />
+
+<image src="images/raspberry-pi.png" />
+
+<br />
+
+<image src="images/iot-edge_solution.png" />
+
+### Azure Resources
+- Custom Vision Service
+- Azure IoT Hub
+- Azure Container Registry
+- Blob Storage
+
+<br />
 
 ### Reference material
 

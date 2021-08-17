@@ -61,7 +61,7 @@
             "version": "1.0",
             "type": "docker",
             "status": "running",
-            "restartPolicy": "never",
+            "restartPolicy": "always",
             "settings": {
               "image": "${MODULES.ImageClassifier.arm32v7}",
               "createOptions": {
